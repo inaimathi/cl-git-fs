@@ -1,12 +1,7 @@
 ;;;; cl-git-fs.lisp
 (in-package #:cl-git-fs)
 
-(defmethod git-commit! ((repo pathname) (files list) (author author) (log-message string))
-  (apply #'git repo :commit 
-	 "--author" (->string author)
-	 "-m" log-message
-	 files))
-
+;;;;;;;;;; Repo modifying procedures
 (defmethod initialize! ((repo pathname))
   "Takes a pathname, and initializes + configures a git repository there.
 Ensures that the directory exists first."
@@ -15,25 +10,24 @@ Ensures that the directory exists first."
   (git repo :config "receive.denyCurrentBranch" "ignore")
   repo)
 
-(defmethod save-file! ((repo pathname) (file-name pathname) contents (author author) (message string))
+(defmethod save-file! ((repo pathname) (file-name pathname) &key (author "Default Author") (email "default@email") (message "Minor change"))
   (let ((full-name (merge-pathnames file-name repo)))
-    (ensure-directories-exist full-name)
-    (with-open-file (s full-name :direction :output :if-exists :supersede :if-does-not-exist :create)
-      (write-sequence contents s)))
-  (git repo :add file-name)
-  (git-commit! repo (list file-name) author message))
+    (when (needs-saving? repo file-name)
+      (git repo :add file-name)
+      (git-commit! repo (list file-name) author email message))))
 
-(defmethod delete-file! ((repo pathname) (file-name pathname) (author author) (message string))
+(defmethod delete-file! ((repo pathname) (file-name pathname) &key (author "Default Author") (email "default@email") (message "Minor change"))
   "Removes the specified filename from the specified repo."
   (git repo :rm file-name)
   (git-commit! repo (list file-name) author message))
 
-(defmethod move-file! ((repo pathname) (file-name pathname) (new-name pathname) (author author) (message string))
+(defmethod move-file! ((repo pathname) (file-name pathname) (new-name pathname) &key (author "Default Author") (email "default@email") (message "Minor change"))
   "Moves the specified file-name to the specified new-name in the specified repo."
-  (when (git-exists? repo file-name)
+  (when (latest repo file-name)
     (git repo :mv file-name new-name)
-    (git-commit! repo (list file-name new-name) author message)))
+    (git-commit! repo (list file-name new-name) author email message)))
 
+;;;;;;;;;; Repo querying functions
 (defmethod retrieve-file ((repo pathname) (file-name pathname) &optional (revision-id "HEAD"))
   "Retrieves the contents of the given file blob.
 Checks HEAD by default, but accepts an optional revision-id."
@@ -54,9 +48,11 @@ The limit parameter is a number."
     (git-output->revisions (apply #'git repo :whatchanged args))))
 
 (defmethod latest ((repo pathname) (file-name string))
-  "Returns the hash of the latest commit relevant to file-name in the specified repo."
+  "Returns the hash of the latest commit relevant to file-name in the specified repo.
+Returns NIL if the file is not tracked by the specified repo."
   (let ((raw (git repo :rev-list "--max-count=1" "HEAD" "--" file-name)))
-    (subseq raw 0 (- (length raw) 1))))
+    (when (> (length raw) 0)
+      (subseq raw 0 (- (length raw) 1)))))
 
 (defmethod revision ((repo pathname) (revision-id string))
   "Returns (hash [timestamp in universal-time format] author-name email raw-comment) for the given commit in the given repo."
@@ -89,15 +85,28 @@ Returns a list of (pathname line-number snippet"
        for (path line-num snippet) = (split-sequence #\Nul line)
        collect (list (pathname path) (parse-integer line-num) snippet))))
 
-(defmethod git-changed? ((repo pathname) (file-name pathname))
-  "Checks whether the given file has changed in the latest commit. Basically, returns true if this file would show up as modified in a `git status` call."
-  (string/= "" (git repo :diff "--name-only" (format nil "~a" file-name))))
-
-(defmethod git-exists? ((repo pathname) (file-name pathname))
-  "Checks whether the given file-name exists in the given repo. This is not the same as file-exists-p; a file might exist in history and not on the filesystem in the current commit."
-  (not (string= "" (latest repo file-name))))
-
 (defmethod ids-match? (repo id-a id-b)
   "git lets you pass a unique prefix in place of the full SHA hash that identifies a commit. Therefore, two hashes match if one is a prefix of the other. Keep in mind that this means a prefix like `a` or `1` is probably going to give you useless results."
   (or (alexandria:starts-with-subseq id-a id-b)
       (alexandria:starts-with-subseq id-b id-a)) nil)
+
+;;;;;;;;;; Internal functions
+(defmethod git-commit! ((repo pathname) (files list) (author-name string) (author-email string) (log-message string))
+  (apply #'git repo :commit 
+	 "--author" (format nil "~a <~a>" author-name author-email)
+	 "-m" log-message
+	 files))
+
+(defmethod needs-saving? ((repo pathname) (file-name pathname))
+  "Returns t if the given file
+- exists
+- is either untracked OR tracked and changed since the last commit."
+  (or (git-changed? repo file-name)
+      (and (cl-fad:file-exists-p (merge-pathnames file-name repo)) 
+	   (not (latest repo file-name)))))
+
+(defmethod git-changed? ((repo pathname) (file-name pathname))
+  "Returns t if the given file is both tracked and currently modified. 
+Basically, returns true if this file would show up as modified in a `git status` call."
+  (and (latest repo file-name)
+       (not (string= "" (git repo :diff "--name-only" (format nil "~a" file-name))))))

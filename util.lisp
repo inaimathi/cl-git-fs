@@ -1,15 +1,5 @@
 (in-package :cl-git-fs)
 
-(defclass author ()
-  ((name :reader name :initarg :name :initform (error "An author must have a name"))
-   (email :reader email :initarg :email :initform nil)))
-
-(defun make-author (name &key email)
-  (make-instance 'author :name name :email email))
-
-(defmethod ->string ((author author))
-  (format nil "~a~@[ <~a>~]" (name author) (email author)))
-
 (defun cat (&rest strings)
   "Shorthand for (concatenate 'string [strings])"
   (apply #'concatenate 'string strings))
