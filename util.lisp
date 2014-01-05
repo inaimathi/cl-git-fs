@@ -29,14 +29,13 @@
 %ae -> author email
 %B  -> raw body (unwrapped subject and body)")
 
-(defparameter +format+ (concatenate 'string "--pretty=format:" +git-log-format+))
+(defparameter +format+ (cat "--pretty=format:" +git-log-format+))
 
 (defun git-output->revisions (raw-output)
   (loop for entry in (split-sequence #\Soh raw-output :remove-empty-subseqs t)
      for (hash date author-name email raw-body) = (split-sequence #\Nul entry)
-     collect (list hash (+ (parse-integer date) +unix-epoch-difference+) 
-		   (make-author author-name :email email)
-		   raw-body)))
+     collect (list hash (+ (parse-integer date) +unix-epoch-difference+)
+		   author-name email raw-body)))
 
 (defun git-output->pathnames (raw-output)
   (let ((lines (split-sequence #\Nul raw-output :remove-empty-subseqs t)))

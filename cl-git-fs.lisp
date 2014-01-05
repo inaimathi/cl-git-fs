@@ -3,9 +3,9 @@
 
 (defmethod git-commit! ((repo pathname) (files list) (author author) (log-message string))
   (apply #'git repo :commit 
-       "--author" (->string author)
-       "-m" log-message
-       files))
+	 "--author" (->string author)
+	 "-m" log-message
+	 files))
 
 (defmethod initialize! ((repo pathname))
   "Takes a pathname, and initializes + configures a git repository there.
@@ -23,12 +23,12 @@ Ensures that the directory exists first."
   (git repo :add file-name)
   (git-commit! repo (list file-name) author message))
 
-(defmethod delete-file! ((repo pathname) (file-name pathname) (author author)  (message string))
+(defmethod delete-file! ((repo pathname) (file-name pathname) (author author) (message string))
   "Removes the specified filename from the specified repo."
   (git repo :rm file-name)
   (git-commit! repo (list file-name) author message))
 
-(defmethod move-file! ((repo pathname) (file-name pathname) (new-name pathname) (author author)  (message string))
+(defmethod move-file! ((repo pathname) (file-name pathname) (new-name pathname) (author author) (message string))
   "Moves the specified file-name to the specified new-name in the specified repo."
   (when (git-exists? repo file-name)
     (git repo :mv file-name new-name)
@@ -42,7 +42,7 @@ Checks HEAD by default, but accepts an optional revision-id."
       (git repo :cat-file "-p" obj-name))))
 
 (defmethod history ((repo pathname) (file-names list) &key since until limit)
-  "Returns a list of (hash [timestamp in universal-time format] author raw-comment) in the given repo related to the given file-names.
+  "Returns a list of (hash [timestamp in universal-time format] author-name email raw-comment) in the given repo related to the given file-names.
 Optionally takes since, until and limit parameters.
 See the git-whatchanged man page for examples of since and until strings. 
 The limit parameter is a number."
@@ -53,13 +53,13 @@ The limit parameter is a number."
 		"--" ,@file-names)))
     (git-output->revisions (apply #'git repo :whatchanged args))))
 
-(defmethod latest ((repo pathname) (file-name pathname))
+(defmethod latest ((repo pathname) (file-name string))
   "Returns the hash of the latest commit relevant to file-name in the specified repo."
-  (let ((raw (git repo :rev-list "--max-count=1" "HEAD" "--" (format nil "~a" file-name))))
+  (let ((raw (git repo :rev-list "--max-count=1" "HEAD" "--" file-name)))
     (subseq raw 0 (- (length raw) 1))))
 
 (defmethod revision ((repo pathname) (revision-id string))
-  "Returns (hash [timestamp in universal-time format] author raw-comment) for the given commit in the given repo."
+  "Returns (hash [timestamp in universal-time format] author-name email raw-comment) for the given commit in the given repo."
   (first
    (git-output->revisions
     (git repo :whatchanged "-z" +format+ "--max-count=1" revision-id))))
@@ -68,11 +68,12 @@ The limit parameter is a number."
   "Returns a list of all files in the repo."
   (git-output->pathnames (git repo :ls-tree "-r" "-t" "-z" "HEAD")))
 
-(defmethod list-directory ((repo pathname) (directory pathname))
+(defmethod list-directory ((repo pathname) (directory string))
   "Returns a list of all files in the specified repo subdirectory."
   (let ((full-dir (cl-fad:directory-exists-p (merge-pathnames directory repo))))
     (when full-dir
-      (git-output->pathnames (git repo :ls-tree "-r" "-t" "-z" (format nil "HEAD:~a" directory))))))
+      (git-output->pathnames 
+       (git repo :ls-tree "-r" "-t" "-z" (cat "HEAD:" directory))))))
 
 (defmethod grep ((repo pathname) (search-terms list) &key ignore-case? match-all? whole-words?)
   "Searches the specified repo for search-terms (a list of regexes).
@@ -87,6 +88,10 @@ Returns a list of (pathname line-number snippet"
     (loop for line in (split-sequence #\Newline (apply #'git repo :grep args) :remove-empty-subseqs t)
        for (path line-num snippet) = (split-sequence #\Nul line)
        collect (list (pathname path) (parse-integer line-num) snippet))))
+
+(defmethod git-changed? ((repo pathname) (file-name pathname))
+  "Checks whether the given file has changed in the latest commit. Basically, returns true if this file would show up as modified in a `git status` call."
+  (string/= "" (git repo :diff "--name-only" (format nil "~a" file-name))))
 
 (defmethod git-exists? ((repo pathname) (file-name pathname))
   "Checks whether the given file-name exists in the given repo. This is not the same as file-exists-p; a file might exist in history and not on the filesystem in the current commit."
