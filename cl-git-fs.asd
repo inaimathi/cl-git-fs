@@ -5,7 +5,8 @@
   :description "Interface for using git as a file storage back-end a-la gitit."
   :author "Inaimathi <leo.zovic@gmail.com>"
   :license "GPL"
-  :depends-on (#:alexandria #:cl-fad)
+  :depends-on (#:alexandria #:cl-fad #:split-sequence)
   :components ((:file "package")
+	       (:file "util")
                (:file "cl-git-fs")))
 
