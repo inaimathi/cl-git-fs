@@ -27,11 +27,11 @@
      collect (list hash (+ (parse-integer date) +unix-epoch-difference+)
 		   author-name email raw-body)))
 
-(defun git-output->pathnames (raw-output)
+(defun git-output->paths (raw-output)
   (let ((lines (split-sequence #\Nul raw-output :remove-empty-subseqs t)))
     (loop for ln in lines
        for (permissions type hash path) = (split-sequence-if (lambda (char) (member char (list #\Space #\Tab))) ln)
-       collect (pathname path))))
+       collect path)))
 
 (defmethod backslash-escape ((characters string) (target string))
   "Takes a string of characters, and a target string.
@@ -48,9 +48,9 @@ Escapes all characters in the target that appear in the bag of characters."
   (backslash-escape "?*+{}[]\\^$.()" regex))
 
 ;; TODO this should define a different interface for SBCL, CCL, Lispworks and Clisp
-(defmethod git ((repo pathname) (command symbol) &rest args)
+(defmethod git ((repo string) (command symbol) &rest args)
   (with-output-to-string (s)
     (sb-ext:run-program 
      "git" `(,(string-downcase (symbol-name command)) ,@args)
-     :directory repo :wait t :search t :output s)
+     :directory (pathname repo) :wait t :search t :output s)
     s))
