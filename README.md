@@ -11,17 +11,17 @@
 
 ### Docs
 
-Specific methods are documented with docstrings; `describe` is your friend for more in-depth description.
+Specific methods are documented with docstrings; `describe` is your friend for more in-depth points.
 
 ### The External API
 
 - As a rule, the `repo` argument is expected to be an absolute path string with a trailing slash (like `"/home/me/a-repo/"`, not `"/home/me/a-repo"` or `#p"/home/me/a-repo"`).
 - Files within a repo are expected to be path strings relative to the repo root. For example, you would call `history` like this: `(history "/home/me/a-repo/" "file-name.txt")`
-- Any functions that manipulate a repo take keyword arguments of `author`, `email` and `message`. They all have defaults, but if you want to be able to track edits by user (for example), you'll need to fill at least some of that in.
+- Any functions that manipulate a repo take keyword arguments of `author`, `email` and `message`. They all have defaults, but if you want to make change tracking possible for your users, fill at least some of them in.
 
 #### Repo modifying procedures
 
-These procedures all edit the underlying repo in some way. So, you know, be careful. Other than initialize, they each take author/email/message keyword arguments that it uss for commit messages and metadata.
+These procedures all edit the underlying repo in some way. So, you know, be careful. Other than `initialize!`, they each take author/email/message keyword arguments that `git` uses for commit messages and metadata.
 
 ##### initialize!
 
