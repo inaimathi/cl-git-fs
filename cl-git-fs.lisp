@@ -95,24 +95,3 @@ Returns a list of (pathname line-number snippet) of matching pieces of files."
   "git lets you pass a unique prefix in place of the full SHA hash that identifies a commit. Therefore, two hashes match if one is a prefix of the other. Keep in mind that this means a prefix like `a` or `1` is probably going to give you useless results."
   (or (alexandria:starts-with-subseq id-a id-b)
       (alexandria:starts-with-subseq id-b id-a)) nil)
-
-;;;;;;;;;; Internal functions
-(defmethod git-commit! ((repo string) (files list) (author-name string) (author-email string) (log-message string))
-  (apply #'git repo :commit 
-	 "--author" (format nil "~a <~a>" author-name author-email)
-	 "-m" log-message
-	 files))
-
-(defmethod needs-saving? ((repo string) (file-name string))
-  "Returns t if the given file
-- exists
-- is either untracked OR tracked and changed since the last commit."
-  (or (git-changed? repo file-name)
-      (and (cl-fad:file-exists-p (merge-pathnames file-name repo)) 
-	   (not (latest repo file-name)))))
-
-(defmethod git-changed? ((repo string) (file-name string))
-  "Returns t if the given file is both tracked and currently modified. 
-Basically, returns true if this file would show up as modified in a `git status` call."
-  (and (latest repo file-name)
-       (not (string= "" (git repo :diff "--name-only" file-name)))))
