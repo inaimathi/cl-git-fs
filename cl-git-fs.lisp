@@ -54,7 +54,7 @@ The limit parameter is a number."
   "Returns the hash of the latest commit relevant to file-name in the specified repo.
 Returns NIL if the file is not tracked by the specified repo."
   (let ((raw (git repo :rev-list "--max-count=1" "HEAD" "--" file-name)))
-    (when (> (length raw) 0)
+    (when (and (> (length raw) 0) (not (alexandria:starts-with-subseq "fatal:" raw)))
       (subseq raw 0 (- (length raw) 1)))))
 
 (defmethod revision ((repo string) (revision-id string))
