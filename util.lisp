@@ -4,6 +4,10 @@
   "Shorthand for (concatenate 'string [strings])"
   (apply #'concatenate 'string strings))
 
+(defmacro define-change (name args (msg-template &rest msg-args) &body body)
+  `(defmethod ,name (,@args &key (author "Default Author") (email "default@email") (message (format nil ,msg-template ,@msg-args)))
+     ,@body))
+
 ;;;;;;;;;; Thank you, krzysz00 and Clayton Stanley from [here](http://stackoverflow.com/questions/10049338/common-lisp-launch-subprocess-with-different-working-directory-than-lisp-proces)
 (defmacro with-cwd (dir &body body)
   (with-gensyms (original-directory)

@@ -10,25 +10,25 @@ Ensures that the directory exists first."
   (git repo :config "receive.denyCurrentBranch" "ignore")
   repo)
 
-(defmethod save-file! ((repo string) (file-name string) &key (author "Default Author") (email "default@email") (message (format nil "Minor change to ~s..." file-name)))
+(define-change save-file! ((repo string) (file-name string)) ("Minor change to ~s..." file-name)
   "Adds the specified filename and commits the change."
   (when (needs-saving? repo file-name)
     (git repo :add file-name)
     (git-commit! repo (list file-name) author email message)))
 
-(defmethod revert-file! ((repo string) (file-name string) (revision-id string) &key (author "Default Author") (email "default@email") (message (format nil "Reverting ~s to ~s..." file-name revision-id)))
+(define-change revert-file! ((repo string) (file-name string) (revision-id string)) ("Reverting ~s to ~s..." file-name revision-id)
   "Reverts the given file to the given commit."
   (git repo :checkout revision-id file-name)
   ;;; We don't care whether it needs-saving? here, so we add+commit directly rather than call out to save-file!
   (git repo :add file-name)
   (git-commit! repo (list file-name) author email message))
 
-(defmethod delete-file! ((repo string) (file-name string) &key (author "Default Author") (email "default@email") (message (format nil "Deleting ~s..." file-name)))
+(define-change delete-file! ((repo string) (file-name string)) ("Deleting ~s..." file-name)
   "Removes the specified filename from the specified repo."
   (git repo :rm file-name)
   (git-commit! repo (list file-name) author email message))
 
-(defmethod move-file! ((repo string) (file-name string) (new-name string) &key (author "Default Author") (email "default@email") (message (format nil "Renaming ~s to ~s..." file-name new-name)))
+(define-change move-file! ((repo string) (file-name string) (new-name string)) ("Renaming ~s to ~s..." file-name new-name)
   "Moves the specified file-name to the specified new-name in the specified repo."
   (when (latest repo file-name)
     (git repo :mv file-name new-name)
@@ -66,9 +66,8 @@ Returns NIL if the file is not tracked by the specified repo."
 
 (defmethod revision ((repo string) (revision-id string))
   "Returns (hash [timestamp in universal-time format] author-name email raw-comment) for the given commit in the given repo."
-  (first
-   (git-output->revisions
-    (git repo :whatchanged "-z" +format+ "--max-count=1" revision-id))))
+  (first (git-output->revisions
+	  (git repo :whatchanged "-z" +format+ "--max-count=1" revision-id))))
 
 (defmethod index ((repo string))
   "Returns a list of all files in the repo."
@@ -77,7 +76,7 @@ Returns NIL if the file is not tracked by the specified repo."
 (defmethod graveyard ((repo string))
   "Returns a list of all files that have been deleted in the repo."
   (multiple-value-bind (res count)
-      (split-sequence #\Newline (git repo :log "--all" "--pretty=format:" "--diff-filter=D" "--name-only"))
+      (split-sequence #\Newline (git repo :log "--all" "--pretty=format:" "--diff-filter=D" "--name-only") :remove-empty-subseqs t)
     (unless (zerop count) res)))
 
 (defmethod list-directory ((repo string) (directory string))
