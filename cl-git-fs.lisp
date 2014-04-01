@@ -16,7 +16,7 @@ Ensures that the directory exists first."
     (git repo :add file-name)
     (git-commit! repo (list file-name) author email message)))
 
-(define-change revert-file! ((repo string) (file-name string) (revision-id string)) ("Reverting ~s to ~s..." file-name revision-id)
+(define-change revert-file! ((repo string) (file-name string) (revision-id string)) ("Reverting ~s..." file-name revision-id)
   "Reverts the given file to the given commit."
   (git repo :checkout revision-id file-name)
   ;;; We don't care whether it needs-saving? here, so we add+commit directly rather than call out to save-file!
@@ -28,7 +28,7 @@ Ensures that the directory exists first."
   (git repo :rm file-name)
   (git-commit! repo (list file-name) author email message))
 
-(define-change move-file! ((repo string) (file-name string) (new-name string)) ("Renaming ~s to ~s..." file-name new-name)
+(define-change move-file! ((repo string) (file-name string) (new-name string)) ("Renaming ~s..." file-name new-name)
   "Moves the specified file-name to the specified new-name in the specified repo."
   (when (latest repo file-name)
     (git repo :mv file-name new-name)
