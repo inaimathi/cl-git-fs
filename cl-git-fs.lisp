@@ -8,6 +8,7 @@ Ensures that the directory exists first."
   (ensure-directories-exist repo)
   (git repo :init)
   (git repo :config "receive.denyCurrentBranch" "ignore")
+  (git repo :commit "--allow-empty" "-m" "Initializing repo...")
   repo)
 
 (define-change save-file! ((repo string) (file-name string)) ("Minor change to ~s..." file-name)
@@ -68,6 +69,9 @@ Returns NIL if the file is not tracked by the specified repo."
   "Returns (hash [timestamp in universal-time format] author-name email raw-comment) for the given commit in the given repo."
   (first (git-output->revisions
 	  (git repo :whatchanged "-z" +format+ "--max-count=1" revision-id))))
+
+(defmethod exists? ((repo string))
+  (cl-fad:directory-exists-p (merge-pathnames (cl-fad:pathname-as-directory ".git") repo)))
 
 (defmethod index ((repo string))
   "Returns a list of all files in the repo."
