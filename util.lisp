@@ -103,8 +103,7 @@ Escapes all characters in the target that appear in the bag of characters."
 (defmethod git ((repo string) (command symbol) &rest args)
   (with-output-to-string (s)
     (with-cwd repo
-      #-sbcl (external-program:run "git" `(,(string-downcase (symbol-name command)) ,@args) :output s)
-      #+sbcl (uiop:run-program `("git" ,(string-downcase (symbol-name command)) ,@args) :output s))
+      (uiop:run-program `("git" ,(string-downcase (symbol-name command)) ,@args) :output s))
     s))
 
 (defmethod git-commit! ((repo string) (files list) (author-name string) (author-email string) (log-message string))
